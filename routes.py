@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db import async_session
 from models import Task
 
-routes = web.RouteTableDef()
+task_routes = web.RouteTableDef()
 
 
-@routes.get('/task/{id}')
+@task_routes.get('/task/{id}')
 async def get_task_by_id(request):
     task_id = request.match_info['id']
 
