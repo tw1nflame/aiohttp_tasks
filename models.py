@@ -8,6 +8,8 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     text = Column(String, nullable=False)
-    status = Column(Boolean, nullable=False)
+    is_done = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deadline = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True),
+                        onupdate=func.now(), server_default=func.now())

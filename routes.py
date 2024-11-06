@@ -1,9 +1,9 @@
 import datetime
 from aiohttp import web
 from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from db import async_session
 from models import Task
+from datetime import datetime
 
 task_routes = web.RouteTableDef()
 
@@ -18,10 +18,10 @@ async def get_task_by_id(request):
     parameters:
       - in: path
         name: id
-        description: ID задачи
         required: true
         schema:
           type: integer
+        description: ID задачи
     responses:
       "200":
         description: Успешное получение задачи
@@ -34,12 +34,17 @@ async def get_task_by_id(request):
                   type: integer
                 text:
                   type: string
-                status:
-                  type: string
+                is_done:
+                  type: boolean
                 created_at:
                   type: string
+                  format: date-time
                 updated_at:
                   type: string
+                  format: date-time
+                deadline:
+                  type: string
+                  format: date-time
       "404":
         description: Задача не найдена
         content:
@@ -52,9 +57,8 @@ async def get_task_by_id(request):
     """
     task_id = request.match_info['id']
     async with async_session() as session:
-        async with session.begin():
-            result = await session.execute(select(Task).where(Task.id == int(task_id)))
-            task = result.scalars().first()
+        result = await session.execute(select(Task).where(Task.id == int(task_id)))
+        task = result.scalars().first()
 
         if task is None:
             return web.json_response({"error": "Task not found"}, status=404)
@@ -62,9 +66,10 @@ async def get_task_by_id(request):
         task_data = {
             "id": task.id,
             "text": task.text,
-            "status": task.status,
+            "is_done": task.is_done,
             "created_at": task.created_at.isoformat(),
-            "updated_at": task.updated_at.isoformat() if task.updated_at else None
+            "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+            "deadline": task.deadline.isoformat() if task.deadline else None
         }
 
         return web.json_response(task_data)
@@ -87,12 +92,16 @@ async def create_task(request):
               text:
                 type: string
                 description: Текст задачи
-              status:
+              is_done:
                 type: boolean
-                description: Статус задачи (например, "в работе" или "завершена")
+                description: Статус задачи (выполнена или нет)
+              deadline:
+                type: string
+                format: date-time
+                description: Дедлайн на выполнение задачи
             required:
               - text
-              - status
+              - is_done
     responses:
       "201":
         description: Задача успешно создана
@@ -105,32 +114,44 @@ async def create_task(request):
                   type: integer
                 text:
                   type: string
-                status:
+                is_done:
+                  type: boolean
+                deadline:
                   type: string
+                  format: date-time
                 created_at:
                   type: string
+                  format: date-time
                 updated_at:
                   type: string
+                  format: date-time
     """
     data = await request.json()
 
     async with async_session() as session:
         task_data = {
             "text": data.get('text'),
-            "status": data.get('status'),
-            "created_at": datetime.datetime.utcnow()
+            "is_done": data.get('is_done'),
+            "deadline": data.get('deadline', None)
         }
 
-        async with session.begin():
-            new_task = Task(
-                text=task_data["text"],
-                status=task_data["status"],
-                created_at=task_data["created_at"],
-                updated_at=None
-            )
-            session.add(new_task)
+        new_task = Task(
+            text=task_data["text"],
+            is_done=task_data["is_done"],
+            deadline=datetime.fromisoformat(
+                task_data['deadline'].replace("Z", "+00:00"))
+        )
+        session.add(new_task)
 
         await session.commit()
-        await session.refresh(new_task)
-        task_data['created_at'] = task_data['created_at'].__str__()
-        return web.json_response(task_data, status=201)
+
+        created_task_data = {
+            "id": new_task.id,
+            "text": new_task.text,
+            "is_done": new_task.is_done,
+            "deadline": new_task.deadline.isoformat() if new_task.deadline else None,
+            "created_at": new_task.created_at.isoformat(),
+            "updated_at": new_task.updated_at.isoformat() if new_task.updated_at else None
+        }
+
+        return web.json_response(created_task_data, status=201)

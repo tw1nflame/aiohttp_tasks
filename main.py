@@ -1,6 +1,7 @@
 from aiohttp import web
 import asyncio
 from db import init_db
+from models import Task
 from routes import task_routes
 from aiohttp_swagger3 import SwaggerDocs, SwaggerUiSettings
 
