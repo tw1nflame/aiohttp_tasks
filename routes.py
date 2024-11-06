@@ -155,3 +155,86 @@ async def create_task(request):
         }
 
         return web.json_response(created_task_data, status=201)
+
+
+@task_routes.patch('/task/{id}/done')
+async def change_task_state(request):
+    """
+    ---
+    description: Изменить статус задачи на выполнена
+    tags:
+      - Tasks
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+        description: ID задачи
+    responses:
+      "200":
+        description: Успешное обновление статуса задачи
+      "404":
+        description: Задача не найдена
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+    """
+    task_id = request.match_info['id']
+    async with async_session() as session:
+        result = await session.execute(select(Task).where(Task.id == int(task_id)))
+        task = result.scalars().first()
+
+        if task is None:
+            return web.json_response({"error": "Task not found"}, status=404)
+
+        task.is_done = True
+        session.add(task)
+        await session.commit()
+
+        return web.Response(status=200)
+
+
+@task_routes.delete('/task/{id}/delete')
+async def change_task_state(request):
+    """
+    ---
+    description: Удалить задачу
+    tags:
+      - Tasks
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+        description: ID задачи
+    responses:
+      "200":
+        description: Успешное удаление задачи
+      "404":
+        description: Задача не найдена
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+    """
+    task_id = request.match_info['id']
+    async with async_session() as session:
+        result = await session.execute(select(Task).where(Task.id == int(task_id)))
+        task = result.scalars().first()
+
+        if task is None:
+            return web.json_response({"error": "Task not found"}, status=404)
+
+        await session.delete(task)
+        await session.commit()
+
+        return web.Response(status=200)
