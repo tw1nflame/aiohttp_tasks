@@ -200,7 +200,7 @@ async def change_task_state(request):
 
 
 @task_routes.delete('/task/{id}/delete')
-async def change_task_state(request):
+async def delete_task(request):
     """
     ---
     description: Удалить задачу
